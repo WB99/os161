@@ -1,0 +1,34 @@
+1. What happens to a thread when it exits (i.e., calls thread_exit())? What about when it sleeps?
+    The current thread is detached from the process, and the detach is checked if it was successful. Then the stack guard band is checked for stack overflow. Interrupts are turned off and the thread is put on the zombie wchan by thread_switch(S_ZOMBIE), while a new thread is chosen to be run. If this does not occur, there will be a kernel panic.
+
+    When a thread is put to sleep, wchan_sleep() asserts that the thread is not in an interrupt handler and holding the spinlock. thead_switch(S_SLEEP) is called, which adds the thread to the wait channel. The CPU picks up and runs the next thread in the runqueue
+
+2. What function(s) handle(s) a context switch?
+    thread_switch()
+
+3. What does it mean for a thread to be in each of the possible thread states?
+    S_READY: thread is ready to run
+    S_RUN: thread is currently running
+    S_SLEEP: thread is sleeping
+    S_ZOMBIE: thread is exited but not destroyed
+
+4. What does it mean to turn interrupts off? How is this accomplished? Why is it important to turn off interrupts in the thread subsystem code?
+    It means that interrupts will not be processed. It is done by setting t_in_interrupt as false in thread_create(). Interrupts have to be off so that they do not cause deadlocks to happen when they fire off while a thread is spinning.
+
+5. What happens when a thread wakes up another thread? How does a sleeping thread get to run again?
+    The sleeping thread on the wait channel is made runnable with the function thread_make_runnable(). This sets the thread state to S_READY and puts it in the runqueue.    
+
+6. What function(s) choose(s) the next thread to run?
+    threadlist_remhead(). 
+
+7. How does it (do they) pick the next thread?
+    It chooses the next thread to run by setting current thread to the thread at the head of the runqueue.
+
+8. What role does the hardware timer play in scheduling? What hardware independent function is called on a timer interrupt?
+    It gives each thread equal time to run during scheduling. hardclock().
+
+9. Describe how wchan_sleep() and wchan_wakeone() are used to implement semaphores.
+    wchan_sleep() is called in P() to put a thread to sleep and added to a wait channel while the shared resource is unavailable, which is kept track by the semaphore count. When another thread is done with a shared resource, it calls V(), which increments the semaphore count, signalling that the shared resource is available. At the same time, it calles wchan_wakeone, which wakes up the thread on the wait channel that was previously put to sleep. That thread can then consume the shared resource and decrement the semaphore count, and call V() afterwards to signal that it is done using the resource.
+
+10. How does the implementation of wchan ensure that a thread never misses a wakeup signal: that another thread cannot attempt to awaken the first thread just as it is preparing to sleep, but before it is actually placed into the sleep queue?
+    wchan_sleep() and wchan_wakeone both take in the status of sem_lock, which is status the spinlock that locks a thread running in either P() or V(). If a thread calls P(), acquires the lock (sem_lock=1) and is put to sleep by wchan_sleep(), and wchan_wakeone() is called before this occurs, wchan_wakeone() will not be executed as it will take in the sem_lock status of 1 check that it is not holding the lock. The functions to remove threads from the wait channel are not run and hence there will not be a case of waking a thread that has not yet been put to sleep.

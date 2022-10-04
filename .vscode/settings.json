@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "synch.h": "c",
+        "__functional_03": "c",
+        "functional": "c",
+        "current.h": "c",
+        "spinlock.h": "c"
     }
 }
