@@ -290,8 +290,8 @@ void cv_destroy(struct cv *cv)
 {
         KASSERT(cv != NULL);
 
-        spinlock_cleanup(&cv->cv_lock);
         wchan_destroy(cv->cv_wchan);
+        spinlock_cleanup(&cv->cv_lock);
         kfree(cv->cv_name);
         kfree(cv);
 }
@@ -312,9 +312,8 @@ void cv_wait(struct cv *cv, struct lock *lock)
         wchan_sleep(cv->cv_wchan, &cv->cv_lock);
 
         // reaquire lock
-        lock_acquire(lock);
-
         spinlock_release(&cv->cv_lock);
+        lock_acquire(lock);
 }
 
 void cv_signal(struct cv *cv, struct lock *lock)
